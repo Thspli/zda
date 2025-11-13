@@ -1,4 +1,3 @@
-// app/api/process-xlsx/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
@@ -30,7 +29,7 @@ function normalizarObjeto(obj: any): any {
 
 function lerExcelComHeaderCorreto(caminhoArquivo: string): any[] {
   const workbook = XLSX.readFile(caminhoArquivo);
-  const primeiraSheet = workbook.SheetNames[0];
+  const primeiraSheet = workbook.SheetNames;
   const worksheet = workbook.Sheets[primeiraSheet];
 
   let dados = XLSX.utils.sheet_to_json(worksheet);
@@ -39,7 +38,7 @@ function lerExcelComHeaderCorreto(caminhoArquivo: string): any[] {
     return [];
   }
 
-  const primeiraLinha = dados[0];
+  const primeiraLinha = dados;
   const colunas = Object.keys(primeiraLinha);
 
   const temColunasInvalidas = colunas.some(col =>
@@ -82,165 +81,6 @@ function buscarValor(obj: any, variacoes: string[]): any {
   return '';
 }
 
-// ==================== INTEGRAÇÃO COM IA ====================
-
-interface ClassificacaoIA {
-  tipo: string;
-  confianca: number;
-}
-
-interface ResultadoIA {
-  [osNum: string]: ClassificacaoIA;
-}
-
-async function chamarIAParaClassificar(caminhoArquivo: string): Promise<ResultadoIA> {
-  const classificacoes: ResultadoIA = {};
-
-  try {
-    console.log('🤖 Chamando IA para classificar OS...');
-
-    if (!fs.existsSync(caminhoArquivo)) {
-      console.error('❌ Arquivo não encontrado');
-      return classificacoes;
-    }
-
-    const stats = fs.statSync(caminhoArquivo);
-    console.log(`📊 Enviando ${(stats.size / 1024).toFixed(2)} KB...`);
-
-    // ✅ FORMA QUE VAI FUNCIONAR: ler e enviar como buffer com FormData
-    const fileBuffer = fs.readFileSync(caminhoArquivo);
-    const fileName = path.basename(caminhoArquivo);
-
-    const FormData = (await import('form-data')).default;
-    const formData = new FormData();
-
-    // ✅ Importante: enviar como Buffer direto com options
-    formData.append('arquivo', fileBuffer, {
-      filename: fileName,
-      contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    });
-
-    console.log('📤 Enviando para IA...');
-
-    // ======================================================
-    //     INÍCIO DA ALTERAÇÃO SOLICITADA (LOGS + HEADERS)
-    // ======================================================
-
-    const response = await fetch('http://localhost:3000/processar', {
-      method: 'POST',
-      body: formData as any,
-      headers: {
-        ...formData.getHeaders(),
-        'Connection': 'close'
-      },
-    });
-
-    console.log(`📡 Status: ${response.status}`);
-    if (!response.ok) {
-      console.warn('❌ Erro:', response.status);
-      const errorText = await response.text();
-      console.log('Resposta de erro:', errorText);
-      return classificacoes;
-    }
-
-    // ✅ LOG CRÍTICO AQUI
-    const dados = await response.json();
-    console.log('📊 DADOS COMPLETOS DA IA:', JSON.stringify(dados, null, 2).substring(0, 1000));
-    console.log('📋 Campo linhas existe?', !!dados.linhas);
-    console.log('📋 Quantidade de linhas:', dados.linhas?.length);
-
-    if (!dados.linhas?.length) {
-      console.warn('⚠️ Sem linhas na resposta');
-      return classificacoes;
-    }
-
-    // ======================================================
-    //     FIM DA ALTERAÇÃO SOLICITADA
-    // ======================================================
-
-    console.log(`📊 ${dados.linhas.length} linhas processadas`);
-
-    dados.linhas.forEach((linha: any) => {
-      const linhaNormalizada = normalizarObjeto(linha);
-      const osNum = buscarValor(linhaNormalizada, ['OS', 'Ordem', 'Numero_OS']);
-
-      if (osNum) {
-        const tipo = buscarValor(linhaNormalizada, ['Classificacao', 'CLASSIFICACAO']) || 'N/A';
-        const confianca = buscarValor(linhaNormalizada, ['Confianca', 'CONFIANCA']) || 0;
-
-        classificacoes[String(osNum)] = {
-          tipo: String(tipo),
-          confianca: Number(confianca)
-        };
-      }
-    });
-
-    console.log(`✅ ${Object.keys(classificacoes).length} OS mapeadas com sucesso!\n`);
-    return classificacoes;
-  } catch (error: any) {
-    console.error('❌ Erro:', error.message);
-    return classificacoes;
-  }
-}
-
-function adicionarClassificacaoIANoExcel(
-  caminhoArquivo: string,
-  classificacoes: ResultadoIA
-): void {
-  console.log('\n📝 Iniciando adição de classificações IA no Excel...');
-  console.log(`📊 Total de classificações recebidas: ${Object.keys(classificacoes).length}`);
-  
-  if (Object.keys(classificacoes).length > 0) {
-    const primeirasChaves = Object.keys(classificacoes).slice(0, 3);
-    console.log('🔍 Exemplos de classificações:');
-    primeirasChaves.forEach(chave => {
-      console.log(`   OS ${chave}: ${classificacoes[chave].tipo} (${classificacoes[chave].confianca}%)`);
-    });
-  }
-
-  if (Object.keys(classificacoes).length === 0) {
-    console.log('⏭️ Nenhuma classificação IA para adicionar');
-    return;
-  }
-
-  const dados = lerExcelComHeaderCorreto(caminhoArquivo);
-  console.log(`📄 Total de linhas no arquivo: ${dados.length}`);
-
-  if (dados.length === 0) {
-    console.warn('⚠️ Arquivo Excel está vazio');
-    return;
-  }
-
-  if (dados.length > 0) {
-    console.log('📋 Colunas disponíveis na primeira linha:', Object.keys(dados[0]).slice(0, 10).join(', '));
-  }
-
-  let linhasComClassificacao = 0;
-  const dadosAtualizados = dados.map((linha, index) => {
-    const osNum = buscarValor(linha, ['OS', 'Ordem', 'ordem', 'Numero_OS', 'NumeroOS', 'NUMERO_OS']);
-    const osNumString = String(osNum).trim();
-
-    if (osNum && classificacoes[osNumString]) {
-      linhasComClassificacao++;
-      return {
-        ...linha,
-        CLASSIFICACAO_IA: classificacoes[osNumString].tipo,
-        CONFIANCA_IA: classificacoes[osNumString].confianca + '%'
-      };
-    }
-
-    return {
-      ...linha,
-      CLASSIFICACAO_IA: 'N/A',
-      CONFIANCA_IA: 'N/A'
-    };
-  });
-
-  salvarExcelComDados(caminhoArquivo, dadosAtualizados);
-  console.log(`✅ ${linhasComClassificacao} linhas receberam classificação IA`);
-  console.log(`✅ Colunas CLASSIFICACAO_IA e CONFIANCA_IA adicionadas com sucesso!\n`);
-}
-
 // ==================== PROCESSAMENTO PCM ====================
 
 interface ResultadoPCM {
@@ -258,7 +98,7 @@ interface ResultadoPCM {
 
 function extrairNumero(texto: string, pattern: RegExp): number {
   const match = texto.match(pattern);
-  return match ? parseInt(match[1], 10) : 0;
+  return match ? parseInt(match, 10) : 0;
 }
 
 function parseResultadoPCM(stdout: string): ResultadoPCM {
@@ -374,11 +214,6 @@ export async function POST(request: NextRequest) {
     fs.writeFileSync(caminhoOS, buffer2);
     console.log('✅ Arquivos salvos no disco com sucesso');
 
-    // Chamar IA passando o CAMINHO do arquivo salvo no disco (string)
-    console.log('\n📤 Enviando arquivo para classificação IA...');
-    const classificacoes = await chamarIAParaClassificar(caminhoOS);
-    console.log(`✅ Recebidas ${Object.keys(classificacoes).length} classificações da IA\n`);
-
     const rootPath = process.cwd();
     const arquivosFixos = [
       {
@@ -423,12 +258,8 @@ export async function POST(request: NextRequest) {
 
     console.log(`📄 Arquivo de classificação gerado: ${classificacaoOS}`);
 
-    // Adicionar classificações IA no arquivo de saída
-    const caminhoClassificacaoFull = path.join(outputDir, classificacaoOS);
-    adicionarClassificacaoIANoExcel(caminhoClassificacaoFull, classificacoes);
-
     const calendarioBuffer = fs.readFileSync(path.join(outputDir, calendarioPreenchido));
-    const classificacaoBuffer = fs.readFileSync(caminhoClassificacaoFull);
+    const classificacaoBuffer = fs.readFileSync(path.join(outputDir, classificacaoOS));
 
     console.log('✅ Arquivos de saída preparados para download\n');
 
@@ -462,7 +293,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error: any) {
     console.error('\n❌ Erro ao processar planilhas:', error.message);
-    console.error('❌ Stack:', error.stack);
 
     if (tempDir && fs.existsSync(tempDir)) {
       try {
