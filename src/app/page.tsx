@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { Upload, FileSpreadsheet, X, Loader2, CheckCircle2, Sparkles, Download } from 'lucide-react';
+import { Upload, FileSpreadsheet, X, Loader2, CheckCircle2, Sparkles, Download, Calendar, ClipboardList } from 'lucide-react';
 import styles from './XlsxUploader.module.css';
 
 export default function XlsxUploader() {
@@ -75,7 +75,6 @@ export default function XlsxUploader() {
     }
   };
 
-  // ✅ FUNÇÃO DE DOWNLOAD
   const downloadArquivo = (nome, dadosBase64) => {
     const byteCharacters = atob(dadosBase64);
     const byteNumbers = new Array(byteCharacters.length);
@@ -111,84 +110,96 @@ export default function XlsxUploader() {
     }
   };
 
-  const UploadZone = ({ fileNumber, file, loading, processed }) => (
-    <div className={styles.uploadZoneWrapper}>
-      <input
-        type="file"
-        accept=".xlsx"
-        onChange={(e) => handleFileChange(e, fileNumber)}
-        className={styles.fileInput}
-        id={`file-input-${fileNumber}`}
-      />
-      
-      <div className={styles.glowEffect} />
-      
-      <label
-        htmlFor={`file-input-${fileNumber}`}
-        className={`${styles.uploadLabel} ${file ? styles.uploadLabelActive : ''}`}
-      >
-        <div className={styles.uploadContent}>
-          {loading ? (
-            <>
-              <div className={styles.loaderWrapper}>
-                <Loader2 className={styles.loaderIcon} />
-                <div className={styles.loaderGlow} />
-              </div>
-              <div className={styles.loadingText}>
-                <p className={styles.loadingTitle}>Processando planilha...</p>
-                <div className={styles.loadingDots}>
-                  <div className={styles.dot} style={{ animationDelay: '0ms' }} />
-                  <div className={styles.dot} style={{ animationDelay: '150ms' }} />
-                  <div className={styles.dot} style={{ animationDelay: '300ms' }} />
-                </div>
-              </div>
-            </>
-          ) : processed ? (
-            <>
-              <div className={styles.successIcon}>
-                <CheckCircle2 className={styles.checkIcon} />
-                <Sparkles className={styles.sparkleIcon} />
-              </div>
-              <p className={styles.successText}>Planilha processada com sucesso!</p>
-            </>
-          ) : file ? (
-            <>
-              <div className={styles.fileIconWrapper}>
-                <FileSpreadsheet className={styles.fileIcon} />
-                <div className={styles.fileIconGlow} />
-              </div>
-              <div className={styles.fileInfo}>
-                <p className={styles.fileName}>{file.name}</p>
-                <p className={styles.fileSize}>{(file.size / 1024).toFixed(2)} KB</p>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className={styles.uploadIconWrapper}>
-                <Upload className={styles.uploadIcon} />
-                <div className={styles.uploadIconGlow} />
-              </div>
-              <div className={styles.uploadTextWrapper}>
-                <p className={styles.uploadTitle}>
-                  Clique para selecionar ou arraste aqui
-                </p>
-                <p className={styles.uploadSubtitle}>
-                  Planilha {fileNumber} - Formato .xlsx
-                </p>
-              </div>
-            </>
-          )}
+  const UploadZone = ({ fileNumber, file, loading, processed, title, subtitle, icon: Icon, color }) => (
+    <div className={styles.uploadCard}>
+      <div className={styles.cardHeader} style={{ background: `linear-gradient(135deg, ${color}15 0%, ${color}25 100%)` }}>
+        <div className={styles.cardHeaderIcon} style={{ background: color }}>
+          <Icon className={styles.cardHeaderIconSvg} />
         </div>
-      </label>
+        <div className={styles.cardHeaderText}>
+          <h3 className={styles.cardTitle}>{title}</h3>
+          <p className={styles.cardSubtitle}>{subtitle}</p>
+        </div>
+      </div>
 
-      {file && !loading && (
-        <button
-          onClick={() => removeFile(fileNumber)}
-          className={styles.removeButton}
+      <div className={styles.uploadZoneWrapper}>
+        <input
+          type="file"
+          accept=".xlsx"
+          onChange={(e) => handleFileChange(e, fileNumber)}
+          className={styles.fileInput}
+          id={`file-input-${fileNumber}`}
+        />
+        
+        <div className={styles.glowEffect} style={{ background: color }} />
+        
+        <label
+          htmlFor={`file-input-${fileNumber}`}
+          className={`${styles.uploadLabel} ${file ? styles.uploadLabelActive : ''}`}
         >
-          <X className={styles.removeIcon} />
-        </button>
-      )}
+          <div className={styles.uploadContent}>
+            {loading ? (
+              <>
+                <div className={styles.loaderWrapper}>
+                  <Loader2 className={styles.loaderIcon} style={{ color }} />
+                  <div className={styles.loaderGlow} style={{ background: color }} />
+                </div>
+                <div className={styles.loadingText}>
+                  <p className={styles.loadingTitle}>Processando planilha...</p>
+                  <div className={styles.loadingDots}>
+                    <div className={styles.dot} style={{ background: color, animationDelay: '0ms' }} />
+                    <div className={styles.dot} style={{ background: color, animationDelay: '150ms' }} />
+                    <div className={styles.dot} style={{ background: color, animationDelay: '300ms' }} />
+                  </div>
+                </div>
+              </>
+            ) : processed ? (
+              <>
+                <div className={styles.successIcon}>
+                  <CheckCircle2 className={styles.checkIcon} />
+                  <Sparkles className={styles.sparkleIcon} style={{ color }} />
+                </div>
+                <p className={styles.successText}>Planilha processada com sucesso!</p>
+              </>
+            ) : file ? (
+              <>
+                <div className={styles.fileIconWrapper}>
+                  <FileSpreadsheet className={styles.fileIcon} style={{ color }} />
+                  <div className={styles.fileIconGlow} style={{ background: color }} />
+                </div>
+                <div className={styles.fileInfo}>
+                  <p className={styles.fileName}>{file.name}</p>
+                  <p className={styles.fileSize}>{(file.size / 1024).toFixed(2)} KB</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <div className={styles.uploadIconWrapper}>
+                  <Upload className={styles.uploadIcon} style={{ color }} />
+                  <div className={styles.uploadIconGlow} style={{ background: color }} />
+                </div>
+                <div className={styles.uploadTextWrapper}>
+                  <p className={styles.uploadTitle}>
+                    Clique para selecionar ou arraste aqui
+                  </p>
+                  <p className={styles.uploadSubtitle}>
+                    Formato .xlsx • Máximo 50MB
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+        </label>
+
+        {file && !loading && (
+          <button
+            onClick={() => removeFile(fileNumber)}
+            className={styles.removeButton}
+          >
+            <X className={styles.removeIcon} />
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -206,10 +217,10 @@ export default function XlsxUploader() {
             <FileSpreadsheet className={styles.headerIconSvg} />
           </div>
           <h1 className={styles.title}>
-            uptime
+            Sistema de Gestão PCP
           </h1>
           <p className={styles.subtitle}>
-            Faça upload de duas planilhas .xlsx para processar
+            Planejamento e Controle de Produção Inteligente
           </p>
           <div className={styles.badge}>
             <Sparkles className={styles.badgeIcon} />
@@ -225,6 +236,10 @@ export default function XlsxUploader() {
               file={file1}
               loading={loading1}
               processed={processed1}
+              title="Calendário PCP"
+              subtitle="Planilha de Planejamento e Controle"
+              icon={Calendar}
+              color="#3b82f6"
             />
           </div>
           <div className={styles.uploadColumn2}>
@@ -233,6 +248,10 @@ export default function XlsxUploader() {
               file={file2}
               loading={loading2}
               processed={processed2}
+              title="Solicitações de Serviço"
+              subtitle="Ordens de Serviço e Demandas"
+              icon={ClipboardList}
+              color="#8b5cf6"
             />
           </div>
         </div>
@@ -263,7 +282,6 @@ export default function XlsxUploader() {
           </button>
         </div>
 
-        {/* ✅ SEÇÃO DE RESULTADOS E DOWNLOADS */}
         {resultado && (
           <div className={styles.resultCard}>
             <div className={styles.resultHeader}>
@@ -333,17 +351,23 @@ export default function XlsxUploader() {
             </div>
             <div className={styles.statusList}>
               <div className={styles.statusItem}>
-                <span className={styles.statusLabel}>Planilha 1:</span>
+                <span className={styles.statusLabel}>
+                  <Calendar style={{ width: '20px', height: '20px', marginRight: '8px' }} />
+                  Calendário PCP:
+                </span>
                 <span className={`${styles.statusValue} ${processed1 ? styles.statusValueSuccess : styles.statusValuePending}`}>
                   {processed1 && <CheckCircle2 className={styles.statusCheckIcon} />}
-                  {processed1 ? 'Processada' : 'Aguardando'}
+                  {processed1 ? 'Processado' : 'Aguardando'}
                 </span>
               </div>
               <div className={styles.statusItem}>
-                <span className={styles.statusLabel}>Planilha 2:</span>
+                <span className={styles.statusLabel}>
+                  <ClipboardList style={{ width: '20px', height: '20px', marginRight: '8px' }} />
+                  Solicitações de Serviço:
+                </span>
                 <span className={`${styles.statusValue} ${processed2 ? styles.statusValueSuccess : styles.statusValuePending}`}>
                   {processed2 && <CheckCircle2 className={styles.statusCheckIcon} />}
-                  {processed2 ? 'Processada' : 'Aguardando'}
+                  {processed2 ? 'Processado' : 'Aguardando'}
                 </span>
               </div>
             </div>
