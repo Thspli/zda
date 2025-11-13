@@ -1,66 +1,355 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { useState } from 'react';
+import { Upload, FileSpreadsheet, X, Loader2, CheckCircle2, Sparkles, Download } from 'lucide-react';
+import styles from './XlsxUploader.module.css';
 
-export default function Home() {
+export default function XlsxUploader() {
+  const [file1, setFile1] = useState(null);
+  const [file2, setFile2] = useState(null);
+  const [loading1, setLoading1] = useState(false);
+  const [loading2, setLoading2] = useState(false);
+  const [processed1, setProcessed1] = useState(false);
+  const [processed2, setProcessed2] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [resultado, setResultado] = useState(null);
+
+  const handleFileChange = (e, fileNumber) => {
+    const file = e.target.files?.[0];
+    if (file && file.name.endsWith('.xlsx')) {
+      if (fileNumber === 1) {
+        setFile1(file);
+        setProcessed1(false);
+        simulateProcessing(1);
+      } else {
+        setFile2(file);
+        setProcessed2(false);
+        simulateProcessing(2);
+      }
+    }
+  };
+
+  const simulateProcessing = (fileNumber) => {
+    if (fileNumber === 1) {
+      setLoading1(true);
+      setTimeout(() => {
+        setLoading1(false);
+        setProcessed1(true);
+      }, 1000);
+    } else {
+      setLoading2(true);
+      setTimeout(() => {
+        setLoading2(false);
+        setProcessed2(true);
+      }, 1000);
+    }
+  };
+
+  const handleProcessFiles = async () => {
+    if (!file1 || !file2) return;
+
+    setProcessing(true);
+    setResultado(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file1', file1);
+      formData.append('file2', file2);
+
+      const response = await fetch('/api/process-xlsx', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setResultado(result.data);
+      } else {
+        alert(`Erro: ${result.error}\n${result.detalhes || ''}`);
+      }
+    } catch (error) {
+      console.error('Erro ao processar:', error);
+      alert('Erro ao processar as planilhas');
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  // ✅ FUNÇÃO DE DOWNLOAD
+  const downloadArquivo = (nome, dadosBase64) => {
+    const byteCharacters = atob(dadosBase64);
+    const byteNumbers = new Array(byteCharacters.length);
+    
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i);
+    }
+    
+    const byteArray = new Uint8Array(byteNumbers);
+    const blob = new Blob([byteArray], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    });
+
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = nome;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const removeFile = (fileNumber) => {
+    if (fileNumber === 1) {
+      setFile1(null);
+      setLoading1(false);
+      setProcessed1(false);
+    } else {
+      setFile2(null);
+      setLoading2(false);
+      setProcessed2(false);
+    }
+  };
+
+  const UploadZone = ({ fileNumber, file, loading, processed }) => (
+    <div className={styles.uploadZoneWrapper}>
+      <input
+        type="file"
+        accept=".xlsx"
+        onChange={(e) => handleFileChange(e, fileNumber)}
+        className={styles.fileInput}
+        id={`file-input-${fileNumber}`}
+      />
+      
+      <div className={styles.glowEffect} />
+      
+      <label
+        htmlFor={`file-input-${fileNumber}`}
+        className={`${styles.uploadLabel} ${file ? styles.uploadLabelActive : ''}`}
+      >
+        <div className={styles.uploadContent}>
+          {loading ? (
+            <>
+              <div className={styles.loaderWrapper}>
+                <Loader2 className={styles.loaderIcon} />
+                <div className={styles.loaderGlow} />
+              </div>
+              <div className={styles.loadingText}>
+                <p className={styles.loadingTitle}>Processando planilha...</p>
+                <div className={styles.loadingDots}>
+                  <div className={styles.dot} style={{ animationDelay: '0ms' }} />
+                  <div className={styles.dot} style={{ animationDelay: '150ms' }} />
+                  <div className={styles.dot} style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            </>
+          ) : processed ? (
+            <>
+              <div className={styles.successIcon}>
+                <CheckCircle2 className={styles.checkIcon} />
+                <Sparkles className={styles.sparkleIcon} />
+              </div>
+              <p className={styles.successText}>Planilha processada com sucesso!</p>
+            </>
+          ) : file ? (
+            <>
+              <div className={styles.fileIconWrapper}>
+                <FileSpreadsheet className={styles.fileIcon} />
+                <div className={styles.fileIconGlow} />
+              </div>
+              <div className={styles.fileInfo}>
+                <p className={styles.fileName}>{file.name}</p>
+                <p className={styles.fileSize}>{(file.size / 1024).toFixed(2)} KB</p>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.uploadIconWrapper}>
+                <Upload className={styles.uploadIcon} />
+                <div className={styles.uploadIconGlow} />
+              </div>
+              <div className={styles.uploadTextWrapper}>
+                <p className={styles.uploadTitle}>
+                  Clique para selecionar ou arraste aqui
+                </p>
+                <p className={styles.uploadSubtitle}>
+                  Planilha {fileNumber} - Formato .xlsx
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </label>
+
+      {file && !loading && (
+        <button
+          onClick={() => removeFile(fileNumber)}
+          className={styles.removeButton}
+        >
+          <X className={styles.removeIcon} />
+        </button>
+      )}
+    </div>
+  );
+
+  const canProcess = file1 && file2 && !loading1 && !loading2 && !processing;
+
   return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className={styles.intro}>
-          <h1>To get started, edit the page.tsx file.</h1>
-          <p>
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className={styles.container}>
+      <div className={styles.bgCircle1} />
+      <div className={styles.bgCircle2} />
+      <div className={styles.bgCircle3} />
+      
+      <div className={styles.content}>
+        <div className={styles.header}>
+          <div className={styles.headerIcon}>
+            <FileSpreadsheet className={styles.headerIconSvg} />
+          </div>
+          <h1 className={styles.title}>
+            uptime
+          </h1>
+          <p className={styles.subtitle}>
+            Faça upload de duas planilhas .xlsx para processar
           </p>
+          <div className={styles.badge}>
+            <Sparkles className={styles.badgeIcon} />
+            <span className={styles.badgeText}>Rápido • Seguro • Profissional</span>
+            <Sparkles className={styles.badgeIcon} />
+          </div>
         </div>
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <div className={styles.uploadGrid}>
+          <div className={styles.uploadColumn1}>
+            <UploadZone
+              fileNumber={1}
+              file={file1}
+              loading={loading1}
+              processed={processed1}
             />
-            Deploy Now
-          </a>
-          <a
-            className={styles.secondary}
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          </div>
+          <div className={styles.uploadColumn2}>
+            <UploadZone
+              fileNumber={2}
+              file={file2}
+              loading={loading2}
+              processed={processed2}
+            />
+          </div>
         </div>
-      </main>
+
+        <div className={styles.buttonWrapper}>
+          <button
+            disabled={!canProcess}
+            onClick={handleProcessFiles}
+            className={`${styles.processButton} ${canProcess ? styles.processButtonActive : styles.processButtonDisabled}`}
+          >
+            <span className={styles.buttonOverlay} />
+            <span className={styles.buttonContent}>
+              {processing ? (
+                <>
+                  <Loader2 className={`${styles.buttonIcon} ${styles.spinning}`} />
+                  Processando...
+                </>
+              ) : canProcess ? (
+                <>
+                  <Sparkles className={styles.buttonIcon} />
+                  Processar Planilhas
+                  <Sparkles className={styles.buttonIcon} />
+                </>
+              ) : (
+                'Aguardando uploads...'
+              )}
+            </span>
+          </button>
+        </div>
+
+        {/* ✅ SEÇÃO DE RESULTADOS E DOWNLOADS */}
+        {resultado && (
+          <div className={styles.resultCard}>
+            <div className={styles.resultHeader}>
+              <CheckCircle2 className={styles.resultHeaderIcon} />
+              <h2 className={styles.resultTitle}>Processamento Concluído!</h2>
+            </div>
+
+            <div className={styles.statsGrid}>
+              <div className={styles.statBox}>
+                <span className={styles.statLabel}>Total de OS</span>
+                <span className={styles.statValue}>{resultado.resumo?.total || 0}</span>
+              </div>
+              <div className={styles.statBox}>
+                <span className={styles.statLabel}>OS Programadas</span>
+                <span className={styles.statValue}>{resultado.resumo?.alocadas || 0}</span>
+              </div>
+              <div className={styles.statBox}>
+                <span className={styles.statLabel}>Taxa de Sucesso</span>
+                <span className={styles.statValue}>{resultado.resumo?.taxaSucesso || 0}%</span>
+              </div>
+              <div className={styles.statBox}>
+                <span className={styles.statLabel}>OS Pendentes</span>
+                <span className={styles.statValue}>{resultado.resumo?.pendentes || 0}</span>
+              </div>
+            </div>
+
+            <div className={styles.downloadSection}>
+              <h3 className={styles.downloadTitle}>
+                <Download className={styles.downloadTitleIcon} />
+                Baixar Resultados
+              </h3>
+              
+              <button
+                onClick={() => downloadArquivo(
+                  resultado.arquivos.calendarioPreenchido.nome,
+                  resultado.arquivos.calendarioPreenchido.dados
+                )}
+                className={styles.downloadButton}
+              >
+                <FileSpreadsheet className={styles.downloadButtonIcon} />
+                <span>Calendário Preenchido</span>
+                <Download className={styles.downloadButtonIconRight} />
+              </button>
+
+              <button
+                onClick={() => downloadArquivo(
+                  resultado.arquivos.classificacaoOS.nome,
+                  resultado.arquivos.classificacaoOS.dados
+                )}
+                className={styles.downloadButton}
+              >
+                <FileSpreadsheet className={styles.downloadButtonIcon} />
+                <span>Classificação de OS</span>
+                <Download className={styles.downloadButtonIconRight} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {(processed1 || processed2) && !resultado && (
+          <div className={styles.statusCard}>
+            <div className={styles.statusHeader}>
+              <div className={styles.statusHeaderIcon}>
+                <CheckCircle2 className={styles.statusHeaderIconSvg} />
+              </div>
+              <h3 className={styles.statusTitle}>Status do Processamento</h3>
+            </div>
+            <div className={styles.statusList}>
+              <div className={styles.statusItem}>
+                <span className={styles.statusLabel}>Planilha 1:</span>
+                <span className={`${styles.statusValue} ${processed1 ? styles.statusValueSuccess : styles.statusValuePending}`}>
+                  {processed1 && <CheckCircle2 className={styles.statusCheckIcon} />}
+                  {processed1 ? 'Processada' : 'Aguardando'}
+                </span>
+              </div>
+              <div className={styles.statusItem}>
+                <span className={styles.statusLabel}>Planilha 2:</span>
+                <span className={`${styles.statusValue} ${processed2 ? styles.statusValueSuccess : styles.statusValuePending}`}>
+                  {processed2 && <CheckCircle2 className={styles.statusCheckIcon} />}
+                  {processed2 ? 'Processada' : 'Aguardando'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
