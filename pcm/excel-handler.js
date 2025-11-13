@@ -77,7 +77,8 @@ class ExcelHandler {
   }
 
   /**
-   * Versão simplificada para formato de 2 colunas
+   * Versão simplificada para formato de 3 colunas (ID, Descrição, Tipo)
+   * ✅ ATUALIZADO: Agora lê a coluna TIPO (Preventiva/Corretiva)
    */
   async lerOrdensServicoSimplificada(caminhoArquivo) {
     console.log('📖 Lendo ordens de serviço (formato simplificado)...');
@@ -88,15 +89,17 @@ class ExcelHandler {
     const ordens = [];
     
     sheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return;
+      if (rowNumber === 1) return; // Pular header
       
       const os = this.getCellValue(row, 1);
       const descricao = this.getCellValue(row, 2);
+      const tipo = this.getCellValue(row, 3); // ← NOVA LINHA: Coluna 3 = Tipo
       
       if (os && descricao) {
         ordens.push({
           ordemServico: String(os).trim(),
           descricao: String(descricao).trim(),
+          tipo: tipo ? String(tipo).trim() : 'N/A', // ← NOVA LINHA: Captura Preventiva/Corretiva
           bem: null,
           nomeBem: null,
           servico: null,
@@ -108,6 +111,12 @@ class ExcelHandler {
     });
     
     console.log(`✅ ${ordens.length} ordens de serviço carregadas (formato simplificado)`);
+    
+    // Estatística de tipos
+    const preventivas = ordens.filter(o => String(o.tipo).toUpperCase().includes('PREVENTIVA')).length;
+    const corretivas = ordens.filter(o => String(o.tipo).toUpperCase().includes('CORRETIVA')).length;
+    console.log(`   📊 ${preventivas} Preventivas | ${corretivas} Corretivas\n`);
+    
     return ordens;
   }
 

@@ -28,7 +28,7 @@ class CalendarioHandler {
       if (primeirasCelulas.some(v => v.includes('DOMINGO') || v.includes('SEGUNDA'))) {
         linhaHeader = rowNumber;
         console.log(`   📍 Header encontrado na linha ${rowNumber}`);
-        console.log(`   📋 Conteúdo: ${primeirasCelulas.slice(0, 10).join(' | ')}`);  // ← DEBUG
+        console.log(`   📋 Conteúdo: ${primeirasCelulas.slice(0, 10).join(' | ')}`);
       }
       
       if (!linhaDatas) {
@@ -45,7 +45,7 @@ class CalendarioHandler {
       if (!linhaTurnos && primeirasCelulas.some(v => v === 'A' || v === 'B' || v === 'C')) {
         linhaTurnos = rowNumber;
         console.log(`   ⏰ Turnos encontrados na linha ${rowNumber}`);
-        console.log(`   📋 Conteúdo: ${primeirasCelulas.slice(0, 15).join(' | ')}`);  // ← DEBUG
+        console.log(`   📋 Conteúdo: ${primeirasCelulas.slice(0, 15).join(' | ')}`);
       }
     });
     
@@ -350,16 +350,22 @@ class CalendarioHandler {
     console.log(`   ✅ Legenda de áreas adicionada na linha ${linhaLegenda}`);
   }
 
+  /**
+   * ✅ CORRIGIDO: Data Programada não mostra mais [object Object]
+   * ✅ ATUALIZADO: Agora inclui a coluna TIPO
+   */
   async exportarClassificacaoOS(ordensProcessadas, caminhoSaida) {
     console.log('📊 Gerando planilha de classificação...');
     
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Classificação de OS');
     
+    // ✅ COLUNA "TIPO" ADICIONADA APÓS "OS"
     sheet.columns = [
       { header: 'Prioridade', key: 'prioridade', width: 12 },
       { header: 'Score', key: 'score', width: 10 },
       { header: 'OS', key: 'ordemServico', width: 12 },
+      { header: 'Tipo', key: 'tipo', width: 15 }, // ← NOVA COLUNA
       { header: 'Tag Identificada', key: 'tagIdentificada', width: 18 },
       { header: 'Descrição', key: 'descricao', width: 50 },
       { header: 'Equipamento', key: 'equipamento', width: 25 },
@@ -386,10 +392,29 @@ class CalendarioHandler {
       const tecnicoNome = ordem.tecnicoAlocado ? ordem.tecnicoAlocado.nome : '-';
       const tecnicoArea = ordem.tecnicoAlocado ? ordem.tecnicoAlocado.area : '-';
       
+      // ✅ CORREÇÃO CRÍTICA: Converter dataProgramada para string sempre
+      let dataProgramadaStr = '-';
+      if (ordem.dataProgramada) {
+        if (typeof ordem.dataProgramada === 'string') {
+          dataProgramadaStr = ordem.dataProgramada;
+        } else if (ordem.dataProgramada instanceof Date) {
+          dataProgramadaStr = this.formatarData(ordem.dataProgramada);
+        } else if (typeof ordem.dataProgramada === 'object') {
+          // Se for objeto, tentar extrair informações úteis
+          if (ordem.slotAlocado) {
+            dataProgramadaStr = `${ordem.slotAlocado.data} - Turno ${ordem.slotAlocado.turno}`;
+          } else {
+            dataProgramadaStr = JSON.stringify(ordem.dataProgramada);
+          }
+        }
+      }
+      
+      // ✅ VALOR DA COLUNA TIPO INCLUÍDO
       const row = sheet.addRow({
         prioridade: index + 1,
         score: ordem.scoreFinal.toFixed(1),
         ordemServico: ordem.ordemServico,
+        tipo: ordem.tipo || 'N/A', // ← NOVA LINHA
         tagIdentificada: ordem.tagIdentificada || 'N/A',
         descricao: ordem.descricao || '',
         equipamento: ordem.equipamento || '',
@@ -400,7 +425,7 @@ class CalendarioHandler {
         classe: ordem.classe,
         metodoMatch: ordem.metodoMatch || 'N/A',
         statusAlocacao: ordem.alocada ? 'Programada' : 'Pendente',
-        dataProgramada: ordem.dataProgramada || '-',
+        dataProgramada: dataProgramadaStr, // ✅ USANDO STRING SEMPRE
         motivoNaoAlocacao: ordem.motivoNaoAlocacao || '-'
       });
       
@@ -449,10 +474,24 @@ class CalendarioHandler {
       o.motivoNaoAlocacao === 'Sem técnico disponível no turno'
     ).length;
     
+    // ✅ ESTATÍSTICAS DE TIPO ADICIONADAS
+    const preventivas = ordensProcessadas.filter(o => 
+      String(o.tipo || '').toUpperCase().includes('PREVENTIVA')
+    ).length;
+    const corretivas = ordensProcessadas.filter(o => 
+      String(o.tipo || '').toUpperCase().includes('CORRETIVA')
+    ).length;
+    
     statsSheet.addRow({ metrica: '=== ALOCAÇÃO ===', valor: '' });
     statsSheet.addRow({ metrica: 'Total de OS', valor: total });
     statsSheet.addRow({ metrica: 'OS Programadas', valor: alocadas });
     statsSheet.addRow({ metrica: 'OS Pendentes', valor: pendentes });
+    statsSheet.addRow({ metrica: '', valor: '' });
+    
+    // ✅ SEÇÃO DE TIPOS
+    statsSheet.addRow({ metrica: '=== TIPOS DE MANUTENÇÃO ===', valor: '' });
+    statsSheet.addRow({ metrica: 'Preventivas', valor: preventivas });
+    statsSheet.addRow({ metrica: 'Corretivas', valor: corretivas });
     statsSheet.addRow({ metrica: '', valor: '' });
     
     statsSheet.addRow({ metrica: '=== PRIORIDADE ===', valor: '' });
@@ -476,16 +515,33 @@ class CalendarioHandler {
     
     statsSheet.getRow(1).font = { bold: true };
     statsSheet.getRow(6).font = { bold: true };
-    statsSheet.getRow(11).font = { bold: true };
-    statsSheet.getRow(18).font = { bold: true };
+    statsSheet.getRow(10).font = { bold: true };
+    statsSheet.getRow(15).font = { bold: true };
+    statsSheet.getRow(22).font = { bold: true };
     
     await workbook.xlsx.writeFile(caminhoSaida);
     console.log(`✅ Classificação gerada:`);
     console.log(`   ${alocadas}/${total} OS programadas`);
+    console.log(`   ${preventivas} Preventivas | ${corretivas} Corretivas`);
     console.log(`   ${comTagIdentificada}/${total} TAGs identificadas (${(comTagIdentificada/total*100).toFixed(1)}%)`);
     
     if (comTecnicoAlocado > 0) {
       console.log(`   ${comTecnicoAlocado}/${total} Técnicos alocados (${(comTecnicoAlocado/total*100).toFixed(1)}%)`);
+    }
+  }
+
+  /**
+   * ✅ Função auxiliar para formatar datas
+   */
+  formatarData(data) {
+    if (!data) return '';
+    try {
+      const dia = String(data.getDate()).padStart(2, '0');
+      const mes = String(data.getMonth() + 1).padStart(2, '0');
+      const ano = data.getFullYear();
+      return `${dia}/${mes}/${ano}`;
+    } catch (error) {
+      return String(data);
     }
   }
 }

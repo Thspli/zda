@@ -276,14 +276,7 @@ export default function XlsxUploader() {
                 <span className={styles.statLabel}>Total de OS</span>
                 <span className={styles.statValue}>{resultado.resumo?.total || 0}</span>
               </div>
-              <div className={styles.statBox}>
-                <span className={styles.statLabel}>OS Programadas</span>
-                <span className={styles.statValue}>{resultado.resumo?.alocadas || 0}</span>
-              </div>
-              <div className={styles.statBox}>
-                <span className={styles.statLabel}>Taxa de Sucesso</span>
-                <span className={styles.statValue}>{resultado.resumo?.taxaSucesso || 0}%</span>
-              </div>
+              
               <div className={styles.statBox}>
                 <span className={styles.statLabel}>OS Pendentes</span>
                 <span className={styles.statValue}>{resultado.resumo?.pendentes || 0}</span>
