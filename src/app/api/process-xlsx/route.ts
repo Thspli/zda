@@ -29,8 +29,8 @@ function normalizarObjeto(obj: any): any {
 
 function lerExcelComHeaderCorreto(caminhoArquivo: string): any[] {
   const workbook = XLSX.readFile(caminhoArquivo);
-  const primeiraSheet = workbook.SheetNames;
-  const worksheet = workbook.Sheets[primeiraSheet];
+const primeiraSheet = workbook.SheetNames[0]; // ✅ Pega o primeiro nome (string)
+const worksheet = workbook.Sheets[primeiraSheet]; // ✅ Agora funciona
 
   let dados = XLSX.utils.sheet_to_json(worksheet);
 
