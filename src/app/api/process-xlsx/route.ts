@@ -29,8 +29,8 @@ function normalizarObjeto(obj: any): any {
 
 function lerExcelComHeaderCorreto(caminhoArquivo: string): any[] {
   const workbook = XLSX.readFile(caminhoArquivo);
-const primeiraSheet = workbook.SheetNames[0]; // ✅ Pega o primeiro nome (string)
-const worksheet = workbook.Sheets[primeiraSheet]; // ✅ Agora funciona
+  const primeiraSheet = workbook.SheetNames[0];
+  const worksheet = workbook.Sheets[primeiraSheet];
 
   let dados = XLSX.utils.sheet_to_json(worksheet);
 
@@ -38,27 +38,28 @@ const worksheet = workbook.Sheets[primeiraSheet]; // ✅ Agora funciona
     return [];
   }
 
-  const primeiraLinha = dados;
-  const colunas = Object.keys(primeiraLinha);
+const primeiraLinha = dados[0] as Record<string, any>;
+const colunas = Object.keys(primeiraLinha);
 
   const temColunasInvalidas = colunas.some(col =>
     /^\d+$/.test(col) || col.includes('__EMPTY')
   );
 
   if (temColunasInvalidas) {
-    console.log('⚠️ Detectado header na primeira linha de dados');
+    console.log('Detectado header na primeira linha de dados');
 
     const headerReal = Object.values(primeiraLinha).map(v => String(v));
     dados = dados.slice(1);
 
-dados = dados.map(linha => {
-  const novaLinha: any = {};
-  Object.values(linha as Record<string, any>).forEach((valor, index) => {
-    const nomeColuna = headerReal[index] || `COLUNA_${index}`;
-    novaLinha[nomeColuna] = valor;
-  });
-  return novaLinha;
-});
+    dados = dados.map(linha => {
+      const novaLinha: any = {};
+      Object.values(linha as Record<string, any>).forEach((valor, index) => {
+        const nomeColuna = headerReal[index] || `COLUNA_${index}`;
+        novaLinha[nomeColuna] = valor;
+      });
+      return novaLinha;
+    });
+  }
 
   return dados.map(linha => normalizarObjeto(linha));
 }
@@ -97,7 +98,7 @@ interface ResultadoPCM {
 
 function extrairNumero(texto: string, pattern: RegExp): number {
   const match = texto.match(pattern);
-  return match ? parseInt(match, 10) : 0;
+return match ? parseInt(match[0], 10) : 0;
 }
 
 function parseResultadoPCM(stdout: string): ResultadoPCM {

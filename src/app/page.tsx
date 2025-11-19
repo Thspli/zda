@@ -13,7 +13,7 @@ export default function XlsxUploader() {
   const [processing, setProcessing] = useState(false);
   const [resultado, setResultado] = useState(null);
 
-  const handleFileChange = (e, fileNumber) => {
+const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileNumber: number) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.xlsx')) {
       if (fileNumber === 1) {
