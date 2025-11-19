@@ -3,17 +3,39 @@ import { useState } from 'react';
 import { Upload, FileSpreadsheet, X, Loader2, CheckCircle2, Sparkles, Download, Calendar, ClipboardList } from 'lucide-react';
 import styles from './XlsxUploader.module.css';
 
-export default function XlsxUploader() {
-  const [file1, setFile1] = useState(null);
-  const [file2, setFile2] = useState(null);
-  const [loading1, setLoading1] = useState(false);
-  const [loading2, setLoading2] = useState(false);
-  const [processed1, setProcessed1] = useState(false);
-  const [processed2, setProcessed2] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [resultado, setResultado] = useState(null);
+interface Arquivo {
+  nome: string;
+  dados: string;
+}
 
-const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileNumber: number) => {
+interface ResultadoData {
+  resumo?: {
+    total: number;
+    alocadas: number;
+    pendentes: number;
+    taxaSucesso: string;
+  };
+  estatisticas?: {
+    slotsDisponiveis: number;
+    tempoProcessamento: string;
+  };
+  arquivos: {
+    calendarioPreenchido: Arquivo;
+    classificacaoOS: Arquivo;
+  };
+}
+
+export default function XlsxUploader() {
+  const [file1, setFile1] = useState<File | null>(null);
+  const [file2, setFile2] = useState<File | null>(null);
+  const [loading1, setLoading1] = useState<boolean>(false);
+  const [loading2, setLoading2] = useState<boolean>(false);
+  const [processed1, setProcessed1] = useState<boolean>(false);
+  const [processed2, setProcessed2] = useState<boolean>(false);
+  const [processing, setProcessing] = useState<boolean>(false);
+  const [resultado, setResultado] = useState<ResultadoData | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileNumber: number) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.xlsx')) {
       if (fileNumber === 1) {
@@ -28,7 +50,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileNumber: nu
     }
   };
 
-  const simulateProcessing = (fileNumber) => {
+  const simulateProcessing = (fileNumber: number) => {
     if (fileNumber === 1) {
       setLoading1(true);
       setTimeout(() => {
@@ -75,7 +97,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileNumber: nu
     }
   };
 
-  const downloadArquivo = (nome, dadosBase64) => {
+  const downloadArquivo = (nome: string, dadosBase64: string) => {
     const byteCharacters = atob(dadosBase64);
     const byteNumbers = new Array(byteCharacters.length);
     
@@ -98,7 +120,7 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileNumber: nu
     window.URL.revokeObjectURL(url);
   };
 
-  const removeFile = (fileNumber) => {
+  const removeFile = (fileNumber: number) => {
     if (fileNumber === 1) {
       setFile1(null);
       setLoading1(false);
@@ -110,7 +132,18 @@ const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileNumber: nu
     }
   };
 
-  const UploadZone = ({ fileNumber, file, loading, processed, title, subtitle, icon: Icon, color }) => (
+  interface UploadZoneProps {
+    fileNumber: number;
+    file: File | null;
+    loading: boolean;
+    processed: boolean;
+    title: string;
+    subtitle: string;
+    icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+    color: string;
+  }
+
+  const UploadZone = ({ fileNumber, file, loading, processed, title, subtitle, icon: Icon, color }: UploadZoneProps) => (
     <div className={styles.uploadCard}>
       <div className={styles.cardHeader} style={{ background: `linear-gradient(135deg, ${color}15 0%, ${color}25 100%)` }}>
         <div className={styles.cardHeaderIcon} style={{ background: color }}>
