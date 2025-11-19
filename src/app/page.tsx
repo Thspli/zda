@@ -3,17 +3,39 @@ import { useState } from 'react';
 import { Upload, FileSpreadsheet, X, Loader2, CheckCircle2, Sparkles, Download } from 'lucide-react';
 import styles from './XlsxUploader.module.css';
 
-export default function XlsxUploader() {
-  const [file1, setFile1] = useState(null);
-  const [file2, setFile2] = useState(null);
-  const [loading1, setLoading1] = useState(false);
-  const [loading2, setLoading2] = useState(false);
-  const [processed1, setProcessed1] = useState(false);
-  const [processed2, setProcessed2] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [resultado, setResultado] = useState(null);
+interface Arquivo {
+  nome: string;
+  dados: string;
+}
 
-  const handleFileChange = (e, fileNumber) => {
+interface ResultadoData {
+  resumo?: {
+    total: number;
+    alocadas: number;
+    pendentes: number;
+    taxaSucesso: string;
+  };
+  estatisticas?: {
+    slotsDisponiveis: number;
+    tempoProcessamento: string;
+  };
+  arquivos: {
+    calendarioPreenchido: Arquivo;
+    classificacaoOS: Arquivo;
+  };
+}
+
+export default function XlsxUploader() {
+  const [file1, setFile1] = useState<File | null>(null);
+  const [file2, setFile2] = useState<File | null>(null);
+  const [loading1, setLoading1] = useState<boolean>(false);
+  const [loading2, setLoading2] = useState<boolean>(false);
+  const [processed1, setProcessed1] = useState<boolean>(false);
+  const [processed2, setProcessed2] = useState<boolean>(false);
+  const [processing, setProcessing] = useState<boolean>(false);
+  const [resultado, setResultado] = useState<ResultadoData | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileNumber: number) => {
     const file = e.target.files?.[0];
     if (file && file.name.endsWith('.xlsx')) {
       if (fileNumber === 1) {
@@ -28,7 +50,7 @@ export default function XlsxUploader() {
     }
   };
 
-  const simulateProcessing = (fileNumber) => {
+  const simulateProcessing = (fileNumber: number) => {
     if (fileNumber === 1) {
       setLoading1(true);
       setTimeout(() => {
@@ -75,8 +97,7 @@ export default function XlsxUploader() {
     }
   };
 
-  // ✅ FUNÇÃO DE DOWNLOAD
-  const downloadArquivo = (nome, dadosBase64) => {
+  const downloadArquivo = (nome: string, dadosBase64: string) => {
     const byteCharacters = atob(dadosBase64);
     const byteNumbers = new Array(byteCharacters.length);
 
@@ -99,7 +120,7 @@ export default function XlsxUploader() {
     window.URL.revokeObjectURL(url);
   };
 
-  const removeFile = (fileNumber) => {
+  const removeFile = (fileNumber: number) => {
     if (fileNumber === 1) {
       setFile1(null);
       setLoading1(false);
@@ -111,7 +132,14 @@ export default function XlsxUploader() {
     }
   };
 
-  const UploadZone = ({ fileNumber, file, loading, processed }) => (
+  interface UploadZoneProps {
+    fileNumber: number;
+    file: File | null;
+    loading: boolean;
+    processed: boolean;
+  }
+
+  const UploadZone = ({ fileNumber, file, loading, processed }: UploadZoneProps) => (
     <div className={styles.uploadZoneWrapper}>
       <input
         type="file"
@@ -178,18 +206,18 @@ export default function XlsxUploader() {
               </div>
             </>
           )}
-                </div>
+        </div>
       </label>
 
       {file && !loading && (
         <button
           onClick={() => removeFile(fileNumber)}
           className={styles.removeButton}
-                  >
+        >
           <X className={styles.removeIcon} />
         </button>
       )}
-          </div>
+    </div>
   );
 
   const canProcess = file1 && file2 && !loading1 && !loading2 && !processing;
@@ -207,10 +235,10 @@ export default function XlsxUploader() {
           </div>
           <h1 className={styles.title}>
             uptime
-                      </h1>
+          </h1>
           <p className={styles.subtitle}>
             Faça upload de duas planilhas .xlsx para processar
-                      </p>
+          </p>
           <div className={styles.badge}>
             <Sparkles className={styles.badgeIcon} />
             <span className={styles.badgeText}>Rápido • Seguro • Profissional</span>
@@ -225,7 +253,7 @@ export default function XlsxUploader() {
               file={file1}
               loading={loading1}
               processed={processed1}
-                          />
+            />
           </div>
           <div className={styles.uploadColumn2}>
             <UploadZone
@@ -233,7 +261,7 @@ export default function XlsxUploader() {
               file={file2}
               loading={loading2}
               processed={processed2}
-                          />
+            />
           </div>
         </div>
 
@@ -263,7 +291,6 @@ export default function XlsxUploader() {
           </button>
         </div>
 
-        {/* ✅ SEÇÃO DE RESULTADOS E DOWNLOADS */}
         {resultado && (
           <div className={styles.resultCard}>
             <div className={styles.resultHeader}>
@@ -334,16 +361,17 @@ export default function XlsxUploader() {
             <div className={styles.statusList}>
               <div className={styles.statusItem}>
                 <span className={styles.statusLabel}>Planilha 1:</span>
-                                <span className={`${styles.statusValue} ${processed1 ? styles.statusValueSuccess : styles.statusValuePending}`}>
+                <span className={`${styles.statusValue} ${processed1 ? styles.statusValueSuccess : styles.statusValuePending}`}>
                   {processed1 && <CheckCircle2 className={styles.statusCheckIcon} />}
                   {processed1 ? 'Processada' : 'Aguardando'}
-                                  </span>
+                </span>
               </div>
               <div className={styles.statusItem}>
                 <span className={styles.statusLabel}>Planilha 2:</span>
-                                <span className={`${styles.statusValue} ${processed2 ? styles.statusValueSuccess : styles.statusValuePending}`}>
+                <span className={`${styles.statusValue} ${processed2 ? styles.statusValueSuccess : styles.statusValuePending}`}>
                   {processed2 && <CheckCircle2 className={styles.statusCheckIcon} />}
-                                  </span>
+                  {processed2 ? 'Processada' : 'Aguardando'}
+                </span>
               </div>
             </div>
           </div>
