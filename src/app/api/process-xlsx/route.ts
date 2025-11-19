@@ -51,15 +51,14 @@ const worksheet = workbook.Sheets[primeiraSheet]; // ✅ Agora funciona
     const headerReal = Object.values(primeiraLinha).map(v => String(v));
     dados = dados.slice(1);
 
-    dados = dados.map(linha => {
-      const novaLinha: any = {};
-      Object.values(linha).forEach((valor, index) => {
-        const nomeColuna = headerReal[index] || `COLUNA_${index}`;
-        novaLinha[nomeColuna] = valor;
-      });
-      return novaLinha;
-    });
-  }
+dados = dados.map(linha => {
+  const novaLinha: any = {};
+  Object.values(linha as Record<string, any>).forEach((valor, index) => {
+    const nomeColuna = headerReal[index] || `COLUNA_${index}`;
+    novaLinha[nomeColuna] = valor;
+  });
+  return novaLinha;
+});
 
   return dados.map(linha => normalizarObjeto(linha));
 }
